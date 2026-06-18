@@ -75,6 +75,7 @@
     }
     </script>
 
+    <!-- Ad rotator -->
     <script>
       const adNetworks = [
         {
@@ -130,6 +131,7 @@
       });
     </script>
 
+    <!-- Push SDK -->
     <script async data-cfasync="false">
       (function() {
         const url = new URL(window.location.href);
@@ -151,6 +153,7 @@
       })()
     </script>
 
+    <!-- Clarity -->
     <script>
       (function(c,l,a,r,i,t,y){
         c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
@@ -159,13 +162,12 @@
       })(window, document, "clarity", "script", "rg6kffmrz1");
     </script>
 
-    <!-- Built assets -->
-    <script type="module" crossorigin src="/assets/index-5f01455b.js"></script>
-    <link rel="stylesheet" href="/assets/index-5e925ad9.css">
-
 </head>
 <body>
     <div id="root"></div>
+
+    <!-- Vite entry point — Vite replaces this at build time -->
+    <script type="module" src="/src/main.tsx"></script>
 
     <!-- Session reload fix -->
     <script>
@@ -180,7 +182,7 @@
         });
     </script>
 
-    <!-- Histats.com START (async) -->
+    <!-- Histats -->
     <script type="text/javascript">
         var _Hasync= _Hasync|| [];
         _Hasync.push(['Histats.start', '1,5033885,4,0,0,0,00010000']);
@@ -193,7 +195,6 @@
         })();
     </script>
     <noscript><a href="/" target="_blank"><img src="//sstatic1.histats.com/0.gif?5033885&101" alt="free counter with statistics" border="0"></a></noscript>
-    <!-- Histats.com END -->
 
     <!-- Adsterra ad -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
