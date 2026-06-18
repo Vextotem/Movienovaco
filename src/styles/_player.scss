@@ -1,0 +1,176 @@
+// Merged Player SCSS
+
+.player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: black;
+  z-index: 1000; // Using the higher z-index from the second file
+
+  iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
+  &-controls {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    position: fixed;
+    top: 30px;
+    left: 35px;
+    right: 35px;
+    z-index: 1001; // Using the higher z-index from the second file
+    gap: 12px; // From second file
+
+    i {
+      font-size: 32px;
+      text-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      color: #fff;
+      
+      // Adding styling from second file
+      background: rgba(0, 0, 0, 0.5);
+      padding: 10px;
+      border-radius: 50%;
+      
+      &.right {
+        margin-left: auto;
+      }
+      
+      &:hover {
+        background: rgba(0, 0, 0, 0.8);
+      }
+    }
+    
+    // Select element from second file - enhanced for dark mode visibility
+    select {
+      background: rgba(60, 60, 60, 0.8);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+      
+      &:hover {
+        background: rgba(80, 80, 80, 0.9);
+        border-color: rgba(255, 255, 255, 0.5);
+      }
+      
+      &:focus {
+        outline: 2px solid rgba(255, 255, 255, 0.5);
+        outline-offset: 1px;
+      }
+      
+      option {
+        background: #333;
+        color: #fff;
+      }
+    }
+  }
+  
+  &-title {
+    position: fixed;
+    top: 360px;
+    left: 50%;
+    max-width: 60%;
+    transform: translateX(-50%);
+    font-size: 16px;
+    font-weight: 500;
+    text-align: center;
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.6);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    z-index: 1001; // Match the controls z-index
+  }
+  
+  // Loading spinner from second file
+  .loading-spinner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    
+    &::before,
+    &::after {
+      content: '';
+      position: absolute;
+      height: 64px;
+      width: 3px;
+      background: #E50914;
+      animation: netflix-spinner 1.2s cubic-bezier(0, 0.5, 0.5, 1) infinite;
+    }
+    
+    &::before {
+      left: 47%;
+      animation-delay: -0.24s;
+    }
+    
+    &::after {
+      left: 50%;
+      animation-delay: -0.12s;
+    }
+
+    // Fix for the duplicate ::before by creating a new element with a class
+    .spinner-third {
+      content: '';
+      position: absolute;
+      height: 64px;
+      width: 3px;
+      background: #E50914;
+      animation: netflix-spinner 1.2s cubic-bezier(0, 0.5, 0.5, 1) infinite;
+      left: 44%;
+      animation-delay: -0.36s;
+    }
+  }
+}
+
+// Media queries
+@media (max-width: 768px) {
+  .player {
+    &-controls {
+      top: 50px;
+      left: 20px;
+      right: 20px;
+      
+      i {
+        font-size: 26px;
+      }
+    }
+    
+    &-title {
+      top: 70px;
+      font-size: 14px;
+    }
+  }
+}
+
+// Animation for the spinner
+@keyframes netflix-spinner {
+  0% {
+    top: calc(50% - 32px);
+    height: 64px;
+  }
+  50%, 100% {
+    top: calc(50% - 16px);
+    height: 32px;
+  }
+}

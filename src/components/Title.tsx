@@ -1,0 +1,718 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet';
+
+import Wishlist from '@/utils/Wishlist';
+
+import EpisodeT from '@/types/Episode';
+import MediaType from '@/types/MediaType';
+import Movie from '@/types/Movie';
+import Series from '@/types/Series';
+import Continue from '@/types/Continue';
+
+import Card from './Card';
+import Episode from './Episode';
+
+interface TitleProps {
+  type: string;
+  id: string;
+}
+
+export default function Title({ type, id }: TitleProps) {
+  const nav = useNavigate();
+  const ref = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLIFrameElement>(null);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+  const trailerModalRef = useRef<HTMLDivElement>(null);
+  const newBannerAdRef = useRef<HTMLDivElement>(null);
+
+  const [data, setData] = useState<Movie | Series>();
+  const [season, setSeason] = useState(1);
+  const [episode, setEpisode] = useState(1);
+  const [episodes, setEpisodes] = useState<EpisodeT[]>();
+  const [maxEpisodes, setMaxEpisodes] = useState(1);
+
+  const [wished, setWished] = useState(false);
+  const [extendSuggestions, setExtendSuggestions] = useState(false);
+  const [extendEpisodes, setExtendEpisodes] = useState(false);
+  
+  const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
+  const [videoVisible, setVideoVisible] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  
+  const [trailerModalVisible, setTrailerModalVisible] = useState(false);
+  
+  const [hasTrailer, setHasTrailer] = useState(false);
+  const [checkingTrailer, setCheckingTrailer] = useState(false);
+
+  function getYear(date: string) {
+    const timestamp = Date.parse(date);
+    return new Date(timestamp).getFullYear();
+  }
+
+  function getLength(runtime: number) {
+    const hours = Math.floor(runtime / 60);
+    const minutes = runtime % 60;
+
+    if (!hours) {
+      return `${minutes}m`;
+    }
+
+    return `${hours}h ${minutes}m`;
+  }
+
+  function handleDownload() {
+    const baseDownloadPage = import.meta.env.VITE_DOWNLOAD_PAGE || import.meta.env.VITE_MOIVE_DOWNLOAD_1;
+    const url = type === 'movie'
+      ? `${baseDownloadPage}?id=${id}`
+      : `${baseDownloadPage}?id=${id}&s=${season}&e=${episode}`;
+    window.open(url, '_blank');
+  }
+
+  async function checkTrailerAvailability() {
+    if (!import.meta.env.VITE_TMDB_API_KEY) {
+      console.warn('TMDB API key not found');
+      return false;
+    }
+
+    setCheckingTrailer(true);
+    
+    try {
+      const tmdbType = type === 'movie' ? 'movie' : 'tv';
+      const response = await fetch(
+        `https://api.themoviedb.org/3/${tmdbType}/${id}/videos?api_key=${import.meta.env.VITE_TMDB_API_KEY}`
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const hasVideos = data.results && data.results.length > 0;
+      
+      setHasTrailer(hasVideos);
+      return hasVideos;
+    } catch (error) {
+      console.error('Error checking trailer availability:', error);
+      setHasTrailer(false);
+      return false;
+    } finally {
+      setCheckingTrailer(false);
+    }
+  }
+
+  async function getData() {
+    try {
+      const req = await fetch(import.meta.env.VITE_APP_API + '/' + type + '/' + id);
+      const res = await req.json();
+
+      if (!res.success) {
+        nav('/');
+        return;
+      }
+
+      const data = res.data;
+
+      setData(data);
+      
+      if (data.trailer) {
+        setTrailerUrl(data.trailer);
+      }
+
+      await checkTrailerAvailability();
+
+      if (type !== 'series') return;
+
+      const cont = localStorage.getItem('continue_' + id);
+
+      if (!cont) {
+        getEpisodes();
+        return;
+      }
+
+      const parsed: Continue = JSON.parse(cont);
+
+      setSeason(parsed.season);
+      setEpisode(parsed.episode);
+
+      getEpisodes(parsed.season);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      nav('/');
+    }
+  }
+
+  async function getEpisodes(season: number = 1) {
+    const req = await fetch(`${import.meta.env.VITE_APP_API}/episodes/${id}?s=${season}`);
+    const res = await req.json();
+
+    if (!res.success) {
+      nav('/');
+      return;
+    }
+
+    const data = res.data;
+
+    setEpisodes(data);
+    setMaxEpisodes(data.length);
+  }
+
+  function onSeasonChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    setEpisodes(undefined);
+
+    const s = parseInt(e.target.value);
+
+    setSeason(s);
+    getEpisodes(s);
+  }
+
+  function onPlusClick(e: React.MouseEvent<HTMLButtonElement>) {
+    e.preventDefault();
+
+    if (!data) return;
+    if (type !== 'movie' && type !== 'series') return;
+
+    Wishlist.add({ id: data.id, poster: data.images.poster, title: data.title, type });
+  }
+
+  function onCheckClick(e: React.MouseEvent<HTMLButtonElement>) {
+    e.preventDefault();
+
+    if (!data) return;
+
+    Wishlist.remove(data.id, type as MediaType);
+  }
+
+  function onWindowClick(e: MouseEvent) {
+    if (!ref.current) return;
+
+    if (e.target === ref.current) {
+      nav('/');
+    }
+  }
+  
+  function handlePlayVideo() {
+    if (!trailerUrl) return;
+    setVideoVisible(true);
+  }
+  
+  function toggleMute() {
+    setIsMuted(!isMuted);
+    if (videoRef.current) {
+      const iframe = videoRef.current;
+      const url = new URL(iframe.src);
+      
+      if (isMuted) {
+        url.searchParams.delete('mute');
+      } else {
+        url.searchParams.set('mute', '1');
+      }
+      
+      iframe.src = url.toString();
+    }
+  }
+  
+  function toggleFullScreen() {
+    if (!videoContainerRef.current) return;
+    
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      videoContainerRef.current.requestFullscreen();
+    }
+  }
+  
+  function openTrailerModal() {
+    setTrailerModalVisible(true);
+    document.body.style.overflow = 'hidden';
+  }
+  
+  function closeTrailerModal() {
+    setTrailerModalVisible(false);
+    document.body.style.overflow = 'auto';
+  }
+  
+  function handleTrailerModalClick(e: React.MouseEvent) {
+    if (trailerModalRef.current && e.target === trailerModalRef.current) {
+      closeTrailerModal();
+    }
+  }
+  
+  function getTrailerUrl() {
+    return type === 'movie' 
+      ? `${import.meta.env.VITE_AWS_API}/trailers.html?id=${id}`
+      : `${import.meta.env.VITE_AWS_API}/tvshow.html?id=${id}`;
+  }
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+
+    window.addEventListener('click', onWindowClick);
+
+    return () => {
+      document.body.style.overflow = 'auto';
+
+      window.removeEventListener('click', onWindowClick);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isNaN(parseInt(id))) {
+      nav('/');
+      return;
+    }
+
+    if (type !== 'movie' && type !== 'series') {
+      nav('/');
+      return;
+    }
+
+    setData(undefined);
+    setEpisodes(undefined);
+    setVideoVisible(false);
+    setVideoLoaded(false);
+    setTrailerModalVisible(false);
+    setHasTrailer(false);
+    setCheckingTrailer(false);
+
+    setExtendEpisodes(false);
+    setExtendSuggestions(false);
+
+    getData();
+
+    return () => {
+      setData(undefined);
+    };
+  }, [type, id]);
+
+  useEffect(() => {
+    if (!data) return;
+
+    setWished(Wishlist.has(data.id, type as MediaType));
+
+    function onWishlistChange() {
+      if (!data) return;
+
+      setWished(Wishlist.has(data.id, type as MediaType));
+    }
+
+    Wishlist.on(data.id, type as MediaType, onWishlistChange);
+
+    return () => {
+      Wishlist.off(data.id, type as MediaType, onWishlistChange);
+    };
+  }, [data]);
+
+  // Load crowdsynonym ad script
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.async = true;
+    script.setAttribute('data-cfasync', 'false');
+    script.src = 'https://crowdsynonym.com/e9c7d8b42f4a2c459272c72d1fd8806e/invoke.js';
+    document.body.appendChild(script);
+    return () => {
+      if (document.body.contains(script)) document.body.removeChild(script);
+    };
+  }, []);
+
+  // Load new Crowdsynonym 300x250 banner
+  useEffect(() => {
+    if (!newBannerAdRef.current) return;
+    (window as any).atOptions = {
+      'key': 'fe1c9e71cfc90fa0ffd2cdf0b4f11418',
+      'format': 'iframe',
+      'height': 250,
+      'width': 300,
+      'params': {}
+    };
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = 'https://crowdsynonym.com/fe1c9e71cfc90fa0ffd2cdf0b4f11418/invoke.js';
+    newBannerAdRef.current.appendChild(script);
+    return () => {
+      if (newBannerAdRef.current?.contains(script)) {
+        newBannerAdRef.current.removeChild(script);
+      }
+    };
+  }, [data]);
+
+  if (!data) {
+    return <div className="title" ref={ref}></div>;
+  }
+
+  return (
+    <>
+      <Helmet>
+        <title>
+          {data.title} - {import.meta.env.VITE_APP_NAME}
+        </title>
+      </Helmet>
+
+      <div className="title" ref={ref}>
+        <div className="title-container">
+          <div className="title-close" onClick={() => nav('/')}>
+            <i className="fa-light fa-close"></i>
+          </div>
+          
+          <div 
+            className="title-backdrop" 
+            style={{ 
+              position: 'relative',
+              backgroundImage: `url(${data.images.backdrop})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              minHeight: '40vh',
+              overflow: 'hidden',
+              cursor: trailerUrl && !videoVisible ? 'pointer' : 'default'
+            }}
+            onClick={trailerUrl && !videoVisible ? handlePlayVideo : undefined}
+          >
+            {trailerUrl && !videoVisible && (
+              <div 
+                className="play-button-overlay"
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  background: 'rgba(0,0,0,0.5)',
+                  borderRadius: '50%',
+                  width: '80px',
+                  height: '80px',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  zIndex: 2
+                }}
+              >
+                <i 
+                  className="fa-solid fa-play" 
+                  style={{
+                    color: 'white',
+                    fontSize: '32px'
+                  }}
+                ></i>
+              </div>
+            )}
+            
+            {trailerUrl && (
+              <div 
+                ref={videoContainerRef}
+                className="trailer-container" 
+                style={{ 
+                  width: '100%', 
+                  height: '100%', 
+                  position: 'absolute', 
+                  top: 0, 
+                  left: 0,
+                  display: videoVisible ? 'block' : 'none',
+                  zIndex: 3
+                }}
+              >
+                <iframe
+                  src={videoVisible ? trailerUrl : 'about:blank'}
+                  ref={videoRef}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                  allowFullScreen
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    backgroundColor: '#000',
+                    transition: 'opacity 0.5s ease',
+                    opacity: videoLoaded ? 1 : 0
+                  }}
+                  onLoad={() => {
+                    setTimeout(() => setVideoLoaded(true), 500);
+                  }}
+                ></iframe>
+              </div>
+            )}
+          </div>
+
+          <div className="title-content">
+            <div className="title-logo">
+              <img alt={data.title} src={data.images.logo} />
+            </div>
+
+            <div className="left-side-buttons" style={{ display: videoVisible ? 'flex' : 'none' }}>
+              {trailerUrl && (
+                <>
+                  <button className="button" onClick={toggleMute} style={{ zIndex: 10 }}>
+                    <i className={`fa-solid ${isMuted ? 'fa-volume-mute' : 'fa-volume-up'}`}></i>
+                  </button>
+
+                  <button className="button btn" onClick={toggleFullScreen} style={{ zIndex: 10 }}>
+                    <i className="fa-solid fa-expand"></i>
+                  </button>
+                </>
+              )}
+            </div>
+
+            <div className="title-actions">
+              <Link 
+                className="button" 
+                to={`/watch/${id}${type === 'series' ? `?s=${season}&e=${episode}` : ''}`}
+                style={{ touchAction: 'manipulation' }}
+              >
+                <i className="fa-solid fa-play"></i>
+                <span>{type === 'series' ? `S${season} E${episode}` : 'Play'}</span>
+              </Link>
+
+              {wished ? (
+                <button className="button" onClick={onCheckClick} style={{ touchAction: 'manipulation' }}>
+                  <i className="fa-solid fa-check"></i>
+                </button>
+              ) : (
+                <button className="button secondary" onClick={onPlusClick} style={{ touchAction: 'manipulation' }}>
+                  <i className="fa-solid fa-plus"></i>
+                </button>
+              )}
+              
+              <div className="button2">
+                <a
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleDownload();
+                  }}
+                  style={{ 
+                    touchAction: 'manipulation', 
+                    cursor: 'pointer' 
+                  }}
+                >
+                  <i className="fa-solid fa-download"></i>
+                  <span>{type === 'series' ? `S${season} E${episode}` : 'Download'}</span>
+                </a>
+              </div>
+            </div>
+            
+            {hasTrailer && (
+              <button 
+                className="button" 
+                onClick={openTrailerModal}
+                style={{ 
+                  width: '100%',
+                  marginTop: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '12px',
+                  borderRadius: '4px',
+                  backgroundColor: '#333',
+                  color: 'white',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.3s',
+                }}
+              >
+                <i className="fa-solid fa-film" style={{ marginRight: '10px' }}></i>
+                <span>Watch Trailer</span>
+              </button>
+            )}
+
+            {/* Telegram Button */}
+            <a 
+              href="https://t.me/+kptv4FKWz6VlOGY0" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="button"
+              style={{ 
+                width: '100%',
+                marginTop: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '12px',
+                borderRadius: '4px',
+                backgroundColor: '#0088cc',
+                color: 'white',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'background-color 0.3s',
+                textDecoration: 'none'
+              }}
+            >
+              <i className="fa-brands fa-telegram" style={{ marginRight: '10px', fontSize: '18px' }}></i>
+              <span>Join our Telegram</span>
+            </a>
+
+            {/* Crowdsynonym Ads Row */}
+            <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
+              <div id="container-e9c7d8b42f4a2c459272c72d1fd8806e"></div>
+              <div ref={newBannerAdRef}></div>
+            </div>
+            
+            {checkingTrailer && (
+              <div style={{ 
+                width: '100%',
+                marginTop: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '12px',
+                color: '#666',
+                fontSize: '14px'
+              }}>
+                <i className="fa-solid fa-spinner fa-spin" style={{ marginRight: '10px' }}></i>
+                <span>Checking trailer availability...</span>
+              </div>
+            )}
+
+            <div className="title-grid">
+              <div className="title-col">
+                {data.tagline && <h4 className="title-tagline">{data.tagline}</h4>}
+
+                <div className="title-meta">
+                  <span className="title-rating">{data.rating}%</span>
+
+                  <span>{getYear(data.date)}</span>
+
+                  {'runtime' in data && <span>{getLength(data.runtime)}</span>}
+
+                  {'seasons' in data && <span>{data.seasons} Seasons</span>}
+                </div>
+
+                <p className="title-description">{data.description}</p>
+              </div>
+
+              <div className="title-col">
+                <div className="title-list">
+                  <span className="head">Genres:</span>
+                  {data.genres.map((genre, i) => (
+                    <Link to={`/genre/${type}/${genre.id}`} key={i}>
+                      {genre.name}
+                      {i < data.genres.length - 1 && ','}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {'seasons' in data && (
+              <div className="title-section">
+                <div className="title-row">
+                  <h3>Episodes</h3>
+
+                  <select className="title-select" value={season} onChange={onSeasonChange}>
+                    {Array.from({ length: data.seasons }).map((_, i) => (
+                      <option key={i} value={i + 1}>
+                        Season {i + 1}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="title-episodes">
+                  {episodes &&
+                    episodes.map((episode, i) => {
+                      if (!extendEpisodes && i > 9) return null;
+
+                      return <Episode key={i} {...episode} id={data.id} season={season} maxEpisodes={maxEpisodes} />;
+                    })}
+                </div>
+
+                {episodes && episodes.length > 10 && (
+                  <div className={`title-extend ${extendEpisodes ? 'active' : ''}`}>
+                    <button className="button secondary" onClick={() => setExtendEpisodes(!extendEpisodes)}>
+                      {extendEpisodes ? <i className="fa-solid fa-chevron-up"></i> : <i className="fa-solid fa-chevron-down"></i>}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {data.suggested && data.suggested.length > 0 && (
+              <div className="title-section">
+                <h3>More Like This</h3>
+
+                <div className="title-cards">
+                  {data.suggested.map((media, i) => {
+                    if (!extendSuggestions && i > 7) return null;
+
+                    return <Card key={i} {...media} />;
+                  })}
+                </div>
+
+                {data.suggested.length > 8 && (
+                  <div className={`title-extend ${extendSuggestions ? 'active' : ''}`}>
+                    <button className="button secondary" onClick={() => setExtendSuggestions(!extendSuggestions)}>
+                      {extendSuggestions ? <i className="fa-solid fa-chevron-up"></i> : <i className="fa-solid fa-chevron-down"></i>}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {trailerModalVisible && hasTrailer && (
+        <div 
+          ref={trailerModalRef}
+          className="trailer-modal"
+          onClick={handleTrailerModalClick}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(0,0,0,0.9)',
+            zIndex: 1000,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}
+        >
+          <div 
+            className="trailer-modal-content"
+            style={{
+              width: '90%',
+              maxWidth: '900px',
+              position: 'relative',
+              aspectRatio: '16/9',
+              backgroundColor: '#000'
+            }}
+          >
+            <button 
+              className="close-modal"
+              onClick={closeTrailerModal}
+              style={{
+                position: 'absolute',
+                top: '-40px',
+                right: '0',
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: 'white',
+                fontSize: '24px',
+                cursor: 'pointer',
+                zIndex: 1001
+              }}
+            >
+              <i className="fa-light fa-close"></i>
+            </button>
+            
+            <iframe
+              src={getTrailerUrl()}
+              frameBorder="0"
+              allowFullScreen
+              style={{
+                width: '100%',
+                height: '100%',
+                position: 'absolute',
+                top: 0,
+                left: 0
+              }}
+            ></iframe>
+          </div>
+        </div>
+      )}
+      
+    </>
+  );
+}
