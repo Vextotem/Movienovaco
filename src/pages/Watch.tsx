@@ -20,8 +20,6 @@ const LOCAL_STORAGE_KEYS = {
 } as const;
 
 const SOURCES: Source[] = [
-    { name: 'Main', url: 'https://api.moviepire.co/embed' },
-    { name: 'Super', url: 'https://api.moviepire.co/embed' },
     { name: 'Peach', url: 'https://peachify.top/embed' },
     { name: 'Mist', url: 'https://play.xpass.top/e' },
     { name: '4K', url: 'https://player.videasy.net' },
