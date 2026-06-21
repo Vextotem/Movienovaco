@@ -21,7 +21,6 @@ const LOCAL_STORAGE_KEYS = {
 
 const SOURCES: Source[] = [
     { name: 'Coffee', url: 'https://stream.moviepire.co/stream' },
-    { name: 'Sugar', url: 'https://api.moviepire.co/embed' },
     { name: 'Peach', url: 'https://peachify.top/embed' },
     { name: 'Mist', url: 'https://play.xpass.top/e' },
     { name: '4K', url: 'https://player.videasy.net' },
