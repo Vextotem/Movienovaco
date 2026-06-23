@@ -20,7 +20,6 @@ const LOCAL_STORAGE_KEYS = {
 } as const;
 
 const SOURCES: Source[] = [
-    { name: 'Coffee', url: 'https://stream.moviepire.co/stream' },
     { name: 'Peach', url: 'https://peachify.top/embed' },
     { name: 'Mist', url: 'https://play.xpass.top/e' },
     { name: '4K', url: 'https://player.videasy.net' },
@@ -543,36 +542,4 @@ export default function Watch() {
                         style={{ cursor: 'pointer', marginLeft: '10px' }}
                     />
 
-                    {type === 'series' && episode < maxEpisodes && (
-                        <i
-                            className="fa-regular fa-forward-step right"
-                            onClick={handleNextEpisode}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => e.key === 'Enter' && handleNextEpisode()}
-                            aria-label="Next episode"
-                        />
-                    )}
-                </div>
-                {loading && (
-                    <div className="loading-spinner" role="status" aria-label="Loading video">
-                        <span className="sr-only">Loading...</span>
-                    </div>
-                )}
-                {sourceUrl && (
-                    <iframe
-                        ref={iframeRef}
-                        src={sourceUrl}
-                        width="100%"
-                        height="100%"
-                        allowFullScreen
-                        title={`Video Player - ${data?.title || 'Movie'}`}
-                        referrerPolicy="origin"
-                        loading="eager"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    />
-                )}
-            </div>
-        </>
-    );
-}
+                    {type === 'series' && epi
