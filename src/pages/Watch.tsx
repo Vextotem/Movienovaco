@@ -19,7 +19,8 @@ const LOCAL_STORAGE_KEYS = {
     viewed: 'viewed'
 } as const;
 
-const SOURCES: Source[] = [
+const SOURCES: Source[] = [ 
+    { name: 'Streambox', url: 'https://cdn1.moviepire.co/stream' },
     { name: 'Peach', url: 'https://peachify.top/embed' },
     { name: 'Mist', url: 'https://play.xpass.top/e' },
     { name: '4K', url: 'https://player.videasy.net' },
@@ -71,6 +72,8 @@ function constructMovieUrl(baseSource: string, source: string, id: string): stri
     const PRIMESRC_PARAMS = '&fallback=true&server_order=PrimeVid,Voe,Dood';
 
     switch (source) {
+        case 'Streambox':
+            return `${baseSource}/movie/${id}`;
         case 'Simplify':
             return `${baseSource}/movie/${id}?autoplay=true&color=addc35&back=false&domainAd=braflix.win`;
         case 'Sub':
@@ -123,6 +126,9 @@ function constructSeriesUrl(
     let url: string;
 
     switch (source) {
+        case 'Streambox':
+            url = `${baseSource}/series/${id}/${season}/${episode}`;
+            break;
         case 'Simplify':
             url = `${baseSource}/tv/${id}/${season}/${episode}?autoplay=true&color=addc35&back=false&domainAd=braflix.win`;
             break;
