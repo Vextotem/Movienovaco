@@ -19,8 +19,7 @@ const LOCAL_STORAGE_KEYS = {
     viewed: 'viewed'
 } as const;
 
-const SOURCES: Source[] = [
-    { name: 'Vidsuper', url: 'https://vidsuper.net/' },
+const SOURCES: Source[] = [   
     { name: 'Peach', url: 'https://peachify.top/embed' },
     { name: 'Mist', url: 'https://play.xpass.top/e' },
     { name: '4K', url: 'https://player.videasy.net' },
