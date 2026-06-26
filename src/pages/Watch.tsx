@@ -19,8 +19,8 @@ const LOCAL_STORAGE_KEYS = {
     viewed: 'viewed'
 } as const;
 
-const SOURCES: Source[] = [ 
-    { name: 'Streambox', url: 'https://cdn1.moviepire.co/stream' },
+const SOURCES: Source[] = [
+    { name: 'Vidsuper', url: 'https://vidsuper.net/' },
     { name: 'Peach', url: 'https://peachify.top/embed' },
     { name: 'Mist', url: 'https://play.xpass.top/e' },
     { name: '4K', url: 'https://player.videasy.net' },
@@ -46,7 +46,6 @@ const SOURCES: Source[] = [
     { name: 'Vidlink', url: 'https://vidlink.pro' },
     { name: 'Nero', url: 'https://vidfast.pro' },
     { name: 'Flixify', url: 'https://vidflix.club' },
-    { name: 'Neon', url: 'https://player.vidzee.wtf/embed' },
     { name: 'Astra', url: 'https://vidsrc.su/embed' },
     { name: 'Vidplay', url: 'https://vidsrc.cc/v2/embed' },
     { name: 'Hindi', url: 'https://vidsrc.wtf/api/1' },
@@ -72,14 +71,8 @@ function constructMovieUrl(baseSource: string, source: string, id: string): stri
     const PRIMESRC_PARAMS = '&fallback=true&server_order=PrimeVid,Voe,Dood';
 
     switch (source) {
-        case 'Streambox':
-            return `${baseSource}/movie/${id}`;
         case 'Simplify':
             return `${baseSource}/movie/${id}?autoplay=true&color=addc35&back=false&domainAd=braflix.win`;
-        case 'Sub':
-            return `${baseSource}/m/${id}/sub`;
-        case 'Dub':
-            return `${baseSource}/m/${id}/dub`;
         case 'Hindi':
             return `${baseSource}/movie/?id=${id}&s=undefined&e=undefined&poster=https://image.tmdb.org/t/p/w780/enNubozHn9pXi0ycTVYUWfpHZm.jpg&color=ffffff`;
         case '4K2':
@@ -88,14 +81,10 @@ function constructMovieUrl(baseSource: string, source: string, id: string): stri
             return `${baseSource}/${id}`;
         case '4KHD':
             return `${baseSource}/movie/${id}?autoPlay=true&theme=addc35`;
-        case 'Brazil':
-            return `${baseSource}/filme/${id}`;
         case 'PrimeWire':
             return `${baseSource}/movie?imdb=${id}${PRIMESRC_PARAMS}`;
         case 'French':
             return `${baseSource}/film.php?id=${id}`;
-        case 'Myra':
-            return `${baseSource}/watch/${id}`;
         case 'Fade':
             return `${baseSource}?type=movie&id=${id}&sendMetadata=true`;
         case 'Vidora':
@@ -126,17 +115,8 @@ function constructSeriesUrl(
     let url: string;
 
     switch (source) {
-        case 'Streambox':
-            url = `${baseSource}/series/${id}/${season}/${episode}`;
-            break;
         case 'Simplify':
             url = `${baseSource}/tv/${id}/${season}/${episode}?autoplay=true&color=addc35&back=false&domainAd=braflix.win`;
-            break;
-        case 'Sub':
-            url = `${baseSource}/s-${season}/${id}/sub`;
-            break;
-        case 'Dub':
-            url = `${baseSource}/s-${season}/${id}/dub`;
             break;
         case 'Hindi':
             return `${baseSource}/tv/?id=${id}&s=${season}&e=${episode}&next-ep=${episode + 1}&poster=https://image.tmdb.org/t/p/w780/yQw23xxmVBFVHPCF6V68TAIIfno.jpg&color=ffffff`;
@@ -149,9 +129,6 @@ function constructSeriesUrl(
         case '4KHD':
             url = `${baseSource}/tv/${id}/${season}/${episode}?autoPlay=true&theme=addc35`;
             break;
-        case 'Brazil':
-            url = `${baseSource}/serie/${id}/${season}/${episode}`;
-            break;
         case 'PrimeWire':
             url = `${baseSource}/tv?tmdb=${id}&season=${season}&episode=${episode}${PRIMESRC_PARAMS}`;
             break;
@@ -160,9 +137,6 @@ function constructSeriesUrl(
             break;
         case 'Club':
             url = `${baseSource}/tv/${id}-${season}-${episode}`;
-            break;
-        case 'Myra':
-            url = `${baseSource}/watch/${id}/${season}/${episode}`;
             break;
         case 'Fade':
             url = `${baseSource}?type=tv&id=${id}&season=${season}&episode=${episode}&autoplay=true&sendMetadata=true`;
@@ -182,9 +156,6 @@ function constructSeriesUrl(
         case 'Portuguese':
             url = `${baseSource}/serie/${id}/${season}/${episode}`;
             break;
-        case 'Russian':
-            url = `${baseSource}/imdb/${id}?season=${season}&episode=${episode}`;
-            break;
         case '4K':
             url = `${baseSource}/tv/${id}/${season}/${episode}`;
             url += url.includes('?') ? `&${SERIES_URL_PARAMS}` : `?${SERIES_URL_PARAMS}`;
@@ -196,8 +167,8 @@ function constructSeriesUrl(
                 : '?primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=default&title=true&poster=true&autoplay=true&nextbutton=true';
             break;
         default:
-            if (isSpecialSource || source === 'India III') {
-                url = `${isSpecialSource || baseSource}?id=${id}&s=${season}&e=${episode}`;
+            if (isSpecialSource) {
+                url = `${isSpecialSource}?id=${id}&s=${season}&e=${episode}`;
             } else {
                 url = `${baseSource}/tv/${id}/${season}/${episode}`;
             }
@@ -349,7 +320,7 @@ export default function Watch() {
             const currentIdx = SOURCES.findIndex(s => s.name === source);
             const nextSource = SOURCES[currentIdx + 1]?.name || SOURCES[0].name;
             console.warn(`${source} source failed to load, falling back to ${nextSource}`);
-            
+
             setHasErrored(true);
             setSource(nextSource);
             setLocalStorageValue(LOCAL_STORAGE_KEYS.selectedSource, nextSource);
@@ -373,7 +344,7 @@ export default function Watch() {
     useEffect(() => {
         const controller = new AbortController();
         const signal = controller.signal;
-        
+
         const s = search.get('s');
         const e = search.get('e');
         const me = search.get('me');
@@ -429,7 +400,7 @@ export default function Watch() {
                 const currentIdx = SOURCES.findIndex(s => s.name === source);
                 const nextSource = SOURCES[currentIdx + 1]?.name || SOURCES[0].name;
                 console.warn(`${source} source timed out, falling back to ${nextSource}`);
-                
+
                 setHasErrored(true);
                 setSource(nextSource);
                 setLocalStorageValue(LOCAL_STORAGE_KEYS.selectedSource, nextSource);
