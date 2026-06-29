@@ -20,8 +20,8 @@ const LOCAL_STORAGE_KEYS = {
 } as const;
 
 const SOURCES: Source[] = [   
-    { name: 'Peach', url: 'https://peachify.top/embed' },
     { name: 'Mist', url: 'https://play.xpass.top/e' },
+    { name: 'Peach', url: 'https://peachify.top/embed' },
     { name: '4K', url: 'https://player.videasy.net' },
     { name: 'Pass', url: 'https://vidcore.net' },
     { name: 'Mistify', url: 'https://vaplayer.ru/embed' },
@@ -114,6 +114,9 @@ function constructSeriesUrl(
     let url: string;
 
     switch (source) {
+        case 'Streambox':
+            url = `${baseSource}/series/${id}/${season}/${episode}`;
+            break;
         case 'Simplify':
             url = `${baseSource}/tv/${id}/${season}/${episode}?autoplay=true&color=addc35&back=false&domainAd=braflix.win`;
             break;
@@ -393,25 +396,26 @@ export default function Watch() {
 
         setLoading(true);
 
-        const timeoutDuration = 8000;
-        const timer = setTimeout(() => {
-            if (!hasErrored) {
-                const currentIdx = SOURCES.findIndex(s => s.name === source);
-                const nextSource = SOURCES[currentIdx + 1]?.name || SOURCES[0].name;
-                console.warn(`${source} source timed out, falling back to ${nextSource}`);
+        // Per-attempt guard: ensures this source resolves exactly once,
+        // whether by successful load or by timeout.
+        let resolved = false;
 
-                setHasErrored(true);
-                setSource(nextSource);
-                setLocalStorageValue(LOCAL_STORAGE_KEYS.selectedSource, nextSource);
-            } else {
-                setLoading(false);
-            }
-        }, timeoutDuration);
+        const advanceSource = () => {
+            if (resolved) return;
+            resolved = true;
+            const currentIdx = SOURCES.findIndex(s => s.name === source);
+            const nextSource = SOURCES[currentIdx + 1]?.name || SOURCES[0].name;
+            console.warn(`${source} source timed out, falling back to ${nextSource}`);
+            setSource(nextSource);
+            setLocalStorageValue(LOCAL_STORAGE_KEYS.selectedSource, nextSource);
+        };
+
+        const timer = setTimeout(advanceSource, 8000);
 
         const handleIframeLoad = () => {
+            resolved = true;
             clearTimeout(timer);
             setLoading(false);
-            setHasErrored(false);
         };
 
         const iframe = iframeRef.current;
@@ -428,7 +432,7 @@ export default function Watch() {
             }
         };
 
-    }, [sourceUrl, source, hasErrored, handleIframeError]);
+    }, [sourceUrl, source, handleIframeError]);
 
     useEffect(() => {
         setHasErrored(false);
@@ -542,7 +546,7 @@ export default function Watch() {
                         height="100%"
                         allowFullScreen
                         title={`Video Player - ${data?.title || 'Movie'}`}
-                        referrerPolicy="origin"
+                        referrerPolicy="no-referrer"
                         loading="eager"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     />
