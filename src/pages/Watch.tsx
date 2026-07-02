@@ -21,6 +21,7 @@ const LOCAL_STORAGE_KEYS = {
 
 const SOURCES: Source[] = [   
     { name: 'Yoru', url: 'https://video.moviepire.co/embed' }, 
+    { name: '4K', url: 'https://player.videasy.net' },
     { name: 'Mist', url: 'https://play.xpass.top/e' },
     { name: 'Peach', url: 'https://peachify.top/embed' },
     { name: 'Pass', url: 'https://vidcore.net' },
