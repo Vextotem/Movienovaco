@@ -20,9 +20,9 @@ const LOCAL_STORAGE_KEYS = {
 } as const;
 
 const SOURCES: Source[] = [   
+    { name: 'Yoru', url: 'https://video.moviepire.co/embed' }, 
     { name: 'Mist', url: 'https://play.xpass.top/e' },
     { name: 'Peach', url: 'https://peachify.top/embed' },
-    { name: '4K', url: 'https://player.videasy.net' },
     { name: 'Pass', url: 'https://vidcore.net' },
     { name: 'Mistify', url: 'https://vaplayer.ru/embed' },
     { name: 'Simplify', url: 'https://zxcstream.xyz/player' },
@@ -114,9 +114,6 @@ function constructSeriesUrl(
     let url: string;
 
     switch (source) {
-        case 'Streambox':
-            url = `${baseSource}/series/${id}/${season}/${episode}`;
-            break;
         case 'Simplify':
             url = `${baseSource}/tv/${id}/${season}/${episode}?autoplay=true&color=addc35&back=false&domainAd=braflix.win`;
             break;
@@ -554,4 +551,4 @@ export default function Watch() {
             </div>
         </>
     );
-}
+}.
