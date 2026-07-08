@@ -14,14 +14,12 @@ interface Source {
 
 const SERIES_URL_PARAMS = 'nextEpisode=true&autoplayNextEpisode=true&episodeSelector=true&color=#E50914';
 const MAX_VIEWED_ITEMS = 15;
-const SOURCE_TIMEOUT_MS = 8000;
-
 const LOCAL_STORAGE_KEYS = {
     selectedSource: 'selectedSource',
     viewed: 'viewed'
 } as const;
 
-const SOURCES: Source[] = [
+const SOURCES: Source[] = [   
     { name: '4K', url: 'https://player.videasy.net' },
     { name: 'Mist', url: 'https://play.xpass.top/e' },
     { name: 'Peach', url: 'https://peachify.top/embed' },
@@ -62,9 +60,11 @@ const SOURCES: Source[] = [
     { name: 'Portuguese', url: 'https://superflixapi.buzz' }
 ];
 
-const DEFAULT_SOURCE = SOURCES[0].name;
-const isValidSource = (name: string | null): name is string =>
-    !!name && SOURCES.some(s => s.name === name);
+const DEFAULT_SOURCE = SOURCES[0]?.name || 'Braflix';
+
+const SPECIAL_SERIES_SOURCES = new Map([
+    ['India', 'http://uembed.xyz']
+]);
 
 function constructMovieUrl(baseSource: string, source: string, id: string): string {
     const PRIMESRC_PARAMS = '&fallback=true&server_order=PrimeVid,Voe,Dood';
@@ -73,7 +73,7 @@ function constructMovieUrl(baseSource: string, source: string, id: string): stri
         case 'Simplify':
             return `${baseSource}/movie/${id}?autoplay=true&color=addc35&back=false&domainAd=braflix.win`;
         case 'Hindi':
-            return `${baseSource}/movie/?id=${id}&color=ffffff`;
+            return `${baseSource}/movie/?id=${id}&s=undefined&e=undefined&poster=https://image.tmdb.org/t/p/w780/enNubozHn9pXi0ycTVYUWfpHZm.jpg&color=ffffff`;
         case '4K2':
             return `${baseSource}/movie/${id}`;
         case 'Prime':
@@ -81,7 +81,7 @@ function constructMovieUrl(baseSource: string, source: string, id: string): stri
         case '4KHD':
             return `${baseSource}/movie/${id}?autoPlay=true&theme=addc35`;
         case 'PrimeWire':
-            return `${baseSource}/movie?tmdb=${id}${PRIMESRC_PARAMS}`;
+            return `${baseSource}/movie?imdb=${id}${PRIMESRC_PARAMS}`;
         case 'French':
             return `${baseSource}/film.php?id=${id}`;
         case 'Fade':
@@ -92,9 +92,10 @@ function constructMovieUrl(baseSource: string, source: string, id: string): stri
             return `${baseSource}/movie/${id}?autoPlay=true`;
         case 'Italian':
             return `${baseSource}/movie/${id}?autoplay=true&lang=it`;
+        case 'Spanish':
+            return `${baseSource}/movie/${id}`;
         case 'Portuguese':
             return `${baseSource}/filme/${id}`;
-        case 'Spanish':
         default:
             return `${baseSource}/movie/${id}`;
     }
@@ -105,9 +106,11 @@ function constructSeriesUrl(
     source: string,
     id: string,
     season: number,
-    episode: number
+    episode: number,
+    type: MediaType
 ): string {
     const PRIMESRC_PARAMS = '&third_party_fallback=true&server_order=PrimeVid,Voe,Dood';
+    const isSpecialSource = SPECIAL_SERIES_SOURCES.get(source);
     let url: string;
 
     switch (source) {
@@ -115,7 +118,7 @@ function constructSeriesUrl(
             url = `${baseSource}/tv/${id}/${season}/${episode}?autoplay=true&color=addc35&back=false&domainAd=braflix.win`;
             break;
         case 'Hindi':
-            return `${baseSource}/tv/?id=${id}&s=${season}&e=${episode}&next-ep=${episode + 1}&color=ffffff`;
+            return `${baseSource}/tv/?id=${id}&s=${season}&e=${episode}&next-ep=${episode + 1}&poster=https://image.tmdb.org/t/p/w780/yQw23xxmVBFVHPCF6V68TAIIfno.jpg&color=ffffff`;
         case '4K2':
             url = `${baseSource}/tv/${id}/${season}/${episode}?nextEpisode=true&autoplayNextEpisode=true&episodeSelector=true&overlay=true&color=8B5CF6`;
             break;
@@ -146,21 +149,33 @@ function constructSeriesUrl(
         case 'Italian':
             url = `${baseSource}/tv/${id}/${season}/${episode}?autoplay=true&lang=it`;
             break;
+        case 'Spanish':
+            url = `${baseSource}/tv/${id}/${season}/${episode}`;
+            break;
         case 'Portuguese':
             url = `${baseSource}/serie/${id}/${season}/${episode}`;
             break;
         case '4K':
-            url = `${baseSource}/tv/${id}/${season}/${episode}?${SERIES_URL_PARAMS}`;
+            url = `${baseSource}/tv/${id}/${season}/${episode}`;
+            url += url.includes('?') ? `&${SERIES_URL_PARAMS}` : `?${SERIES_URL_PARAMS}`;
             break;
         case 'Vidlink':
-            url = `${baseSource}/tv/${id}/${season}/${episode}?primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=default&title=true&poster=true&autoplay=true&nextbutton=true`;
-            break;
-        case 'Braflix':
-            url = `${baseSource}/tv/${id}/${season}/${episode}?autonext=1&ds_lang=en`;
+            url = `${baseSource}/tv/${id}/${season}/${episode}`;
+            url += url.includes('?')
+                ? '&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=default&title=true&poster=true&autoplay=true&nextbutton=true'
+                : '?primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=default&title=true&poster=true&autoplay=true&nextbutton=true';
             break;
         default:
-            url = `${baseSource}/tv/${id}/${season}/${episode}`;
+            if (isSpecialSource) {
+                url = `${isSpecialSource}?id=${id}&s=${season}&e=${episode}`;
+            } else {
+                url = `${baseSource}/tv/${id}/${season}/${episode}`;
+            }
             break;
+    }
+
+    if (source === 'Braflix' && type === 'series') {
+        url += url.includes('?') ? '&autonext=1&ds_lang=en' : '?autonext=1&ds_lang=en';
     }
 
     return url;
@@ -187,249 +202,38 @@ export default function Watch() {
     const { id } = useParams<{ id: string }>();
     const [search] = useSearchParams();
 
-    // Derive playback target straight from the URL. Keeping this in state meant
-    // the first render always built a *movie* URL, even for series.
-    const target = useMemo(() => {
-        const rawS = search.get('s');
-        const rawE = search.get('e');
-
-        if (!rawS || !rawE) {
-            return { type: 'movie' as MediaType, season: 1, episode: 1, valid: true };
-        }
-
-        const season = parseInt(rawS, 10);
-        const episode = parseInt(rawE, 10);
-        const valid = Number.isInteger(season) && Number.isInteger(episode) && season >= 1 && episode >= 1;
-
-        return { type: 'series' as MediaType, season, episode, valid };
-    }, [search]);
-
-    const { type, season, episode, valid } = target;
-
+    const [type, setType] = useState<MediaType>('movie');
+    const [season, setSeason] = useState(1);
+    const [episode, setEpisode] = useState(1);
+    const [maxEpisodes, setMaxEpisodes] = useState(1);
     const [data, setData] = useState<Movie | Series>();
-    const [maxEpisodes, setMaxEpisodes] = useState(0);
-    const [episodesLoaded, setEpisodesLoaded] = useState(type === 'movie');
-    const [loading, setLoading] = useState(true);
-    const [allSourcesFailed, setAllSourcesFailed] = useState(false);
 
     const [source, setSource] = useState(() => {
         const urlSource = search.get('src');
-        if (isValidSource(urlSource)) return urlSource;
-
-        const stored = getLocalStorageValue(LOCAL_STORAGE_KEYS.selectedSource, DEFAULT_SOURCE);
-        return isValidSource(stored) ? stored : DEFAULT_SOURCE;
+        if (urlSource && SOURCES.find(s => s.name === urlSource)) {
+            return urlSource;
+        }
+        return getLocalStorageValue(LOCAL_STORAGE_KEYS.selectedSource, DEFAULT_SOURCE);
     });
 
+    const [loading, setLoading] = useState(true);
+    const [hasErrored, setHasErrored] = useState(false);
     const iframeRef = useRef<HTMLIFrameElement>(null);
-    const attemptedRef = useRef<Set<string>>(new Set());
 
     const sourceUrl = useMemo(() => {
-        if (!id || !valid) return '';
+        if (!id) return '';
 
         const sourceData = SOURCES.find(s => s.name === source);
         if (!sourceData) return '';
 
-        return type === 'movie'
-            ? constructMovieUrl(sourceData.url, source, id)
-            : constructSeriesUrl(sourceData.url, source, id, season, episode);
-    }, [source, type, id, season, episode, valid]);
+        const { url: baseSource } = sourceData;
 
-    /* ---------------------------------------------------------------- */
-    /* Source fallback                                                   */
-    /* ---------------------------------------------------------------- */
-
-    // Only picks sources it hasn't already burned, so it can't loop forever.
-    const advanceSource = useCallback(() => {
-        attemptedRef.current.add(source);
-
-        const next = SOURCES.find(s => !attemptedRef.current.has(s.name));
-        if (!next) {
-            console.warn('All sources failed to load.');
-            setAllSourcesFailed(true);
-            setLoading(false);
-            return;
+        if (type === 'movie') {
+            return constructMovieUrl(baseSource, source, id);
         }
 
-        console.warn(`${source} failed, falling back to ${next.name}`);
-        setSource(next.name);
-    }, [source]);
-
-    // Explicit user choice: reset the burn list and persist. Auto-fallbacks are
-    // deliberately NOT persisted — otherwise a dead source becomes the default.
-    const handleSourceChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newSource = e.target.value;
-        attemptedRef.current = new Set();
-        setAllSourcesFailed(false);
-        setSource(newSource);
-        setLocalStorageValue(LOCAL_STORAGE_KEYS.selectedSource, newSource);
-    }, []);
-
-    useEffect(() => {
-        if (!sourceUrl) return;
-
-        setLoading(true);
-
-        const iframe = iframeRef.current;
-        if (!iframe) return;
-
-        // Single guard shared by load / error / timeout so a source resolves once.
-        let resolved = false;
-
-        const succeed = () => {
-            if (resolved) return;
-            resolved = true;
-            clearTimeout(timer);
-            setLoading(false);
-        };
-
-        const fail = () => {
-            if (resolved) return;
-            resolved = true;
-            clearTimeout(timer);
-            advanceSource();
-        };
-
-        const timer = setTimeout(fail, SOURCE_TIMEOUT_MS);
-
-        iframe.addEventListener('load', succeed);
-        iframe.addEventListener('error', fail);
-
-        return () => {
-            clearTimeout(timer);
-            iframe.removeEventListener('load', succeed);
-            iframe.removeEventListener('error', fail);
-        };
-    }, [sourceUrl, advanceSource]);
-
-    // ?src= override, applied whenever the query string changes.
-    useEffect(() => {
-        const urlSource = search.get('src');
-        if (isValidSource(urlSource)) {
-            attemptedRef.current = new Set();
-            setAllSourcesFailed(false);
-            setSource(urlSource);
-        }
-    }, [search]);
-
-    /* ---------------------------------------------------------------- */
-    /* Data                                                              */
-    /* ---------------------------------------------------------------- */
-
-    const addViewed = useCallback((mediaData: MediaShort): void => {
-        try {
-            const viewedStr = localStorage.getItem(LOCAL_STORAGE_KEYS.viewed);
-            const viewed: MediaShort[] = viewedStr ? JSON.parse(viewedStr) : [];
-
-            const updatedViewed = [
-                mediaData,
-                ...viewed.filter(v => !(v.id === mediaData.id && v.type === mediaData.type))
-            ].slice(0, MAX_VIEWED_ITEMS);
-
-            localStorage.setItem(LOCAL_STORAGE_KEYS.viewed, JSON.stringify(updatedViewed));
-        } catch (error) {
-            console.error('Error updating viewed items:', error);
-        }
-    }, []);
-
-    useEffect(() => {
-        if (!id || !valid) return;
-
-        const controller = new AbortController();
-
-        (async () => {
-            try {
-                const res = await fetch(`${import.meta.env.VITE_APP_API}/${type}/${id}`, {
-                    signal: controller.signal
-                });
-                if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-
-                const result = await res.json();
-                if (!result.success) return;
-
-                setData(result.data);
-                addViewed({
-                    id: result.data.id,
-                    poster: result.data.images.poster,
-                    title: result.data.title,
-                    type
-                });
-            } catch (error: any) {
-                if (error.name !== 'AbortError') console.error('Error fetching media data:', error);
-            }
-        })();
-
-        return () => controller.abort();
-    }, [id, type, valid, addViewed]);
-
-    useEffect(() => {
-        if (!id || !valid || type !== 'series') {
-            setEpisodesLoaded(type === 'movie');
-            return;
-        }
-
-        const me = parseInt(search.get('me') ?? '', 10);
-        if (Number.isInteger(me) && me > 0) {
-            setMaxEpisodes(me);
-            setEpisodesLoaded(true);
-            return;
-        }
-
-        const controller = new AbortController();
-        setEpisodesLoaded(false);
-
-        (async () => {
-            try {
-                const res = await fetch(
-                    `${import.meta.env.VITE_APP_API}/episodes/${id}?s=${season}`,
-                    { signal: controller.signal }
-                );
-                if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-
-                const result = await res.json();
-                if (!result.success) {
-                    nav('/');
-                    return;
-                }
-
-                setMaxEpisodes(result.data.length);
-                setEpisodesLoaded(true);
-            } catch (error: any) {
-                if (error.name !== 'AbortError') {
-                    console.error('Error fetching episode data:', error);
-                    nav('/');
-                }
-            }
-        })();
-
-        return () => controller.abort();
-    }, [id, type, season, search, valid, nav]);
-
-    /* ---------------------------------------------------------------- */
-    /* Guards                                                            */
-    /* ---------------------------------------------------------------- */
-
-    useEffect(() => {
-        if (!id || !valid) nav('/', { replace: true });
-    }, [id, valid, nav]);
-
-    // Only bounce once we actually know the season/episode counts. Previously
-    // maxEpisodes defaulted to 1, so /watch/x?s=1&e=5 kicked you home on load.
-    useEffect(() => {
-        if (type !== 'series' || !data || !('seasons' in data) || !episodesLoaded) return;
-        if (season > data.seasons || episode > maxEpisodes) nav('/', { replace: true });
-    }, [type, data, episodesLoaded, maxEpisodes, season, episode, nav]);
-
-    useEffect(() => {
-        const previous = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
-        return () => {
-            document.body.style.overflow = previous;
-        };
-    }, []);
-
-    /* ---------------------------------------------------------------- */
-    /* Handlers                                                          */
-    /* ---------------------------------------------------------------- */
+        return constructSeriesUrl(baseSource, source, id, season, episode, type);
+    }, [source, type, id, season, episode]);
 
     const handleDownload = useCallback(() => {
         const baseDownloadPage = type === 'movie'
@@ -440,24 +244,219 @@ export default function Watch() {
             ? `${baseDownloadPage}?id=${id}`
             : `${baseDownloadPage}?id=${id}&s=${season}&e=${episode}`;
 
-        window.open(url, '_blank', 'noopener,noreferrer');
+        window.open(url, '_blank');
     }, [type, id, season, episode]);
+
+    const addViewed = useCallback((mediaData: MediaShort): void => {
+        try {
+            const viewedStr = localStorage.getItem(LOCAL_STORAGE_KEYS.viewed);
+            const viewed: MediaShort[] = viewedStr ? JSON.parse(viewedStr) : [];
+
+            const updatedViewed = [
+                mediaData,
+                ...viewed.filter(v => !(v.id === mediaData.id && v.type === mediaData.type))
+            ].slice(0, MAX_VIEWED_ITEMS);
+            localStorage.setItem(LOCAL_STORAGE_KEYS.viewed, JSON.stringify(updatedViewed));
+        } catch (error) {
+            console.error('Error updating viewed items:', error);
+        }
+    }, []);
+
+    const fetchData = useCallback(async (mediaType: MediaType, signal: AbortSignal): Promise<void> => {
+        if (!id) return;
+
+        try {
+            const response = await fetch(`${import.meta.env.VITE_APP_API}/${mediaType}/${id}`, { signal });
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}`);
+            }
+            const result = await response.json();
+            if (!result.success) return;
+
+            setData(result.data);
+            addViewed({
+                id: result.data.id,
+                poster: result.data.images.poster,
+                title: result.data.title,
+                type: mediaType,
+            });
+        } catch (error: any) {
+            if (error.name !== 'AbortError') {
+                console.error('Error fetching media data:', error);
+            }
+        }
+    }, [id, addViewed]);
+
+    const fetchMaxEpisodes = useCallback(async (seasonNumber: number, signal: AbortSignal): Promise<void> => {
+        if (!id) return;
+
+        try {
+            const response = await fetch(
+                `${import.meta.env.VITE_APP_API}/episodes/${id}?s=${seasonNumber}`,
+                { signal }
+            );
+
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}`);
+            }
+
+            const result = await response.json();
+            if (!result.success) {
+                nav('/');
+                return;
+            }
+            setMaxEpisodes(result.data.length);
+        } catch (error: any) {
+            if (error.name !== 'AbortError') {
+                console.error('Error fetching episode data:', error);
+                nav('/');
+            }
+        }
+    }, [id, nav]);
+
+    const handleIframeError = useCallback(() => {
+        if (!hasErrored) {
+            const currentIdx = SOURCES.findIndex(s => s.name === source);
+            const nextSource = SOURCES[currentIdx + 1]?.name || SOURCES[0].name;
+            console.warn(`${source} source failed to load, falling back to ${nextSource}`);
+
+            setHasErrored(true);
+            setSource(nextSource);
+            setLocalStorageValue(LOCAL_STORAGE_KEYS.selectedSource, nextSource);
+        }
+        setLoading(false);
+    }, [source, hasErrored]);
+
+    useEffect(() => {
+        if (!hasErrored) {
+            setLocalStorageValue(LOCAL_STORAGE_KEYS.selectedSource, source);
+        }
+    }, [source, hasErrored]);
+
+    useEffect(() => {
+        if (!data || !('seasons' in data)) return;
+        if (season > data.seasons || episode > maxEpisodes) {
+            nav('/');
+        }
+    }, [data, maxEpisodes, season, episode, nav]);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        const signal = controller.signal;
+
+        const s = search.get('s');
+        const e = search.get('e');
+        const me = search.get('me');
+
+        if (!s || !e) {
+            setType('movie');
+            fetchData('movie', signal);
+            return () => controller.abort();
+        }
+
+        const seasonNum = parseInt(s, 10);
+        const episodeNum = parseInt(e, 10);
+
+        if (isNaN(seasonNum) || isNaN(episodeNum) || seasonNum < 1 || episodeNum < 1) {
+            nav('/');
+            return () => controller.abort();
+        }
+
+        setSeason(seasonNum);
+        setEpisode(episodeNum);
+        setType('series');
+        fetchData('series', signal);
+
+        if (me) {
+            const maxEps = parseInt(me, 10);
+            if (!isNaN(maxEps) && maxEps > 0) {
+                setMaxEpisodes(maxEps);
+            } else {
+                fetchMaxEpisodes(seasonNum, signal);
+            }
+        } else {
+            fetchMaxEpisodes(seasonNum, signal);
+        }
+
+        return () => controller.abort();
+    }, [id, search, fetchData, fetchMaxEpisodes, nav]);
+
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = 'auto';
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!sourceUrl) return;
+
+        setLoading(true);
+
+        // Per-attempt guard: ensures this source resolves exactly once,
+        // whether by successful load or by timeout.
+        let resolved = false;
+
+        const advanceSource = () => {
+            if (resolved) return;
+            resolved = true;
+            const currentIdx = SOURCES.findIndex(s => s.name === source);
+            const nextSource = SOURCES[currentIdx + 1]?.name || SOURCES[0].name;
+            console.warn(`${source} source timed out, falling back to ${nextSource}`);
+            setSource(nextSource);
+            setLocalStorageValue(LOCAL_STORAGE_KEYS.selectedSource, nextSource);
+        };
+
+        const timer = setTimeout(advanceSource, 8000);
+
+        const handleIframeLoad = () => {
+            resolved = true;
+            clearTimeout(timer);
+            setLoading(false);
+        };
+
+        const iframe = iframeRef.current;
+        if (iframe) {
+            iframe.addEventListener('load', handleIframeLoad);
+            iframe.addEventListener('error', handleIframeError);
+        }
+
+        return () => {
+            clearTimeout(timer);
+            if (iframe) {
+                iframe.removeEventListener('load', handleIframeLoad);
+                iframe.removeEventListener('error', handleIframeError);
+            }
+        };
+
+    }, [sourceUrl, source, handleIframeError]);
+
+    useEffect(() => {
+        setHasErrored(false);
+    }, [source]);
+
+    useEffect(() => {
+        const urlSource = search.get('src');
+        if (urlSource && SOURCES.find(s => s.name === urlSource)) {
+            setSource(urlSource);
+            setHasErrored(false);
+        }
+    }, [search]);
 
     const handleBackClick = useCallback(() => {
         nav(`/${type}/${id}`);
     }, [nav, type, id]);
 
     const handleNextEpisode = useCallback(() => {
-        const params = new URLSearchParams({
-            s: String(season),
-            e: String(episode + 1),
-            me: String(maxEpisodes)
-        });
-        const src = search.get('src');
-        if (src) params.set('src', src);
+        nav(`/watch/${id}?s=${season}&e=${episode + 1}&me=${maxEpisodes}`);
+    }, [nav, id, season, episode, maxEpisodes]);
 
-        nav(`/watch/${id}?${params.toString()}`);
-    }, [nav, id, season, episode, maxEpisodes, search]);
+    const handleSourceChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newSource = e.target.value;
+        setSource(newSource);
+        setHasErrored(false);
+        setLocalStorageValue(LOCAL_STORAGE_KEYS.selectedSource, newSource);
+    }, []);
 
     const preconnectUrl = useMemo(() => {
         try {
@@ -467,7 +466,10 @@ export default function Watch() {
         }
     }, [sourceUrl]);
 
-    if (!id || !valid) return null;
+    if (!id) {
+        nav('/');
+        return null;
+    }
 
     return (
         <>
@@ -495,9 +497,15 @@ export default function Watch() {
                         aria-label="Go back"
                     />
 
-                    <select value={source} onChange={handleSourceChange} aria-label="Select video source">
+                    <select
+                        value={source}
+                        onChange={handleSourceChange}
+                        aria-label="Select video source"
+                    >
                         {SOURCES.map((s) => (
-                            <option key={s.name} value={s.name}>{s.name}</option>
+                            <option key={s.name} value={s.name}>
+                                {s.name}
+                            </option>
                         ))}
                     </select>
 
@@ -511,7 +519,7 @@ export default function Watch() {
                         style={{ cursor: 'pointer', marginLeft: '10px' }}
                     />
 
-                    {type === 'series' && episodesLoaded && episode < maxEpisodes && (
+                    {type === 'series' && episode < maxEpisodes && (
                         <i
                             className="fa-regular fa-forward-step right"
                             onClick={handleNextEpisode}
@@ -522,22 +530,13 @@ export default function Watch() {
                         />
                     )}
                 </div>
-
-                {loading && !allSourcesFailed && (
+                {loading && (
                     <div className="loading-spinner" role="status" aria-label="Loading video">
                         <span className="sr-only">Loading...</span>
                     </div>
                 )}
-
-                {allSourcesFailed && (
-                    <div className="player-error" role="alert">
-                        No source could be loaded. Try picking one manually.
-                    </div>
-                )}
-
-                {sourceUrl && !allSourcesFailed && (
+                {sourceUrl && (
                     <iframe
-                        key={sourceUrl}
                         ref={iframeRef}
                         src={sourceUrl}
                         width="100%"
